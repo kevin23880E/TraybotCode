@@ -22,7 +22,7 @@ int LiftPID(double target) {
   double kI = 0.0;
   double kD = 0.0;
 
-
+  double power = 0.0;
 
   while(runLiftPID) {
     //condition of reaching goal here
@@ -42,6 +42,11 @@ int LiftPID(double target) {
       }
 
     }
+    
+
+
+
+    
 
   }
 
