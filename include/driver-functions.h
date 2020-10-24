@@ -2,6 +2,8 @@
 
 extern bool runLiftPID;
 
+extern double LiftTarget;
+
 //PID To control the lift
-int LiftPID(double target);
+int LiftPID();
 

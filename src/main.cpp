@@ -35,9 +35,6 @@ competition Competition;
 
 
 
-
-
-
 // define your global instances of motors and other devices here
 
 /*---------------------------------------------------------------------------*/

@@ -2,7 +2,9 @@
 
 bool runLiftPID = false;
 
-int LiftPID(double target) {
+double LiftTarget = 0.0;
+
+int LiftPID() {
 
   double error = 0;
   double previousError = 0;
@@ -10,9 +12,8 @@ int LiftPID(double target) {
   //The max number of degrees that the error can be
   double maxError = 1;
 
-
   double integral = 0;
-  //within how many degrees the integral activates
+  //within how many degrees of the target the integral activates
   double integralBound = 10;
 
   double derivative = 0;
@@ -24,8 +25,10 @@ int LiftPID(double target) {
 
   double power = 0.0;
 
+  //outer condition turns loop on and off
   while(runLiftPID) {
-    //condition of reaching goal here
+
+    //runs the PID while the goal has not been reached
     while(fabs(target - error) > maxError) {
 
       error = target - LiftMotor.rotation(rotationUnits::deg);
@@ -41,13 +44,18 @@ int LiftPID(double target) {
         integral = 0;
       }
 
+      derivative = error - previousError;
+
+      previousError = error;
+
+      power = kP * error + kI * integral + kD * derivative;
+
+      LiftMotor.spin(directionType::fwd, power, voltageUnits::volt);
+
+
+      task::sleep(20);
     }
     
-
-
-
-    
-
   }
 
   return 1;
