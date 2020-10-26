@@ -29,11 +29,8 @@ using namespace vex;
 // A global instance of competition
 competition Competition;
 
-
-
-
-
-
+//tasks
+task liftTask;
 
 // define your global instances of motors and other devices here
 
@@ -82,22 +79,73 @@ void autonomous(void) {
 /*---------------------------------------------------------------------------*/
 
 void usercontrol(void) {
-  // User control code here, inside the loop
+  
+  //create a task to control the lift with a PID function
+  liftTask = task(liftPID);
+
   while (1) {
-    // This is the main execution loop for the user control program.
-    // Each time through the loop your program should update motor + servo
-    // values based on feedback from the joysticks.
+
+    /* CHASSIS */
+
+    double driveAmt = Controller1.Axis3.value();
+    double turnAmt = Controller1.Axis1.value();
+    double strafeAmt = Controller1.Axis4.value();
+
+    LFDrive.spin(directionType::fwd, driveAmt - turnAmt + strafeAmt, velocityUnits::pct);
+    RFDrive.spin(directionType::fwd, driveAmt + turnAmt - strafeAmt, velocityUnits::pct);
+    LBDrive.spin(directionType::fwd, driveAmt - turnAmt - strafeAmt, velocityUnits::pct);
+    RBDrive.spin(directionType::fwd, driveAmt + turnAmt + strafeAmt, velocityUnits::pct);
 
 
+    /* LIFT */
+
+    //the number of degrees the lift should target for the up and down states
+      //liftBottomTarget is more than 0 so that the lift can coast down the last little bit and not press against the hard stops
+    double liftBottomTarget = 10;
+    double liftTopTarget = 100;
+
+    if(Controller1.ButtonL1.pressing()) {
+      liftState = 1;
+      liftTarget = liftTopTarget;
+      runLiftPID = true;
+    }
+    else if(Controller1.ButtonL2.pressing()) {
+      liftState = 0;
+      liftTarget = liftBottomTarget;
+
+    }
+
+
+    /* INTAKES */
+
+    //If the tray is down, run all intakes with each other
+    if(liftState == 0) {
+      
+      if(Controller1.ButtonR1.pressing()) {
+        LeftIntake.spin(directionType::fwd, 100, velocityUnits::pct);
+        RightIntake.spin(directionType::fwd, 100, velocityUnits::pct);
+        TopRoller.spin(directionType::fwd, 100, velocityUnits::pct);
+      }
+      else if(Controller1.ButtonR2.pressing()) {
+        LeftIntake.spin(directionType::rev, 100, velocityUnits::pct);
+        RightIntake.spin(directionType::rev, 100, velocityUnits::pct);
+        TopRoller.spin(directionType::rev, 100, velocityUnits::pct);
+      }
+
+    }
+    //If the tray is UP, only intake with the side rollers and only outtake with the top roller
+    else {
+
+      if(Controller1.ButtonR1.pressing()) {
+        LeftIntake.spin(directionType::fwd, 100, velocityUnits::pct);
+        RightIntake.spin(directionType::fwd, 100, velocityUnits::pct);
+      }
+      else if(Controller1.ButtonR2.pressing()) {
+        TopRoller.spin(directionType::rev, 100, velocityUnits::pct);
+      }
+
+    }
     
-
-
-
-
-    // ........................................................................
-    // Insert user code here. This is where you use the joystick values to
-    // update your motors, etc.
-    // ........................................................................
 
     wait(20, msec); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
