@@ -11,18 +11,18 @@
 // Robot Configuration:
 // [Name]               [Type]        [Port(s)]
 // Controller1          controller                    
-// LFDrive              motor         1               
-// RFDrive              motor         2               
-// LBDrive              motor         10              
-// RBDrive              motor         11              
-// LeftIntake           motor         4               
-// RightIntake          motor         5               
-// TopRoller            motor         20              
-// LiftMotor            motor         18              
+// LFDrive              motor         11              
+// RFDrive              motor         1               
+// LBDrive              motor         20              
+// RBDrive              motor         10              
+// LeftIntake           motor         13              
+// RightIntake          motor         3               
+// TopRoller            motor         9               
+// LiftMotor            motor         8               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
-#include "driver-functions.h"
+
 
 using namespace vex;
 
@@ -30,7 +30,7 @@ using namespace vex;
 competition Competition;
 
 //tasks
-task liftTask;
+
 
 // define your global instances of motors and other devices here
 
@@ -79,17 +79,51 @@ void autonomous(void) {
 /*---------------------------------------------------------------------------*/
 
 void usercontrol(void) {
+  LiftMotor.resetRotation();
   
   //create a task to control the lift with a PID function
-  liftTask = task(liftPID);
+
+
+
+  double error = 0;
+  double previousError = 0;
+
+  //The max number of degrees that the error can be
+  double maxError = 1;
+
+  double integral = 0;
+  //within how many degrees of the target the integral activates
+  double integralBound = 10;
+
+  double derivative = 0;
+
+
+  double kP = 0.7;
+  double kI = 0.0;
+  double kD = 0.0;
+
+  double power = 0.0;
+
+  double driveAmt;
+  double turnAmt;
+  double strafeAmt;
+
+  bool liftState = 0;
+
+  bool runLiftPID = 0;
+
+  double liftTarget = 0.0;
+
+  double liftBottomTarget = 30;
+  double liftTopTarget = 400;
 
   while (1) {
 
     /* CHASSIS */
 
-    double driveAmt = Controller1.Axis3.value();
-    double turnAmt = Controller1.Axis1.value();
-    double strafeAmt = Controller1.Axis4.value();
+    driveAmt = Controller1.Axis3.value();
+    turnAmt = Controller1.Axis1.value();
+    strafeAmt = Controller1.Axis4.value();
 
     LFDrive.spin(directionType::fwd, driveAmt - turnAmt + strafeAmt, velocityUnits::pct);
     RFDrive.spin(directionType::fwd, driveAmt + turnAmt - strafeAmt, velocityUnits::pct);
@@ -99,21 +133,48 @@ void usercontrol(void) {
 
     /* LIFT */
 
-    //the number of degrees the lift should target for the up and down states
-      //liftBottomTarget is more than 0 so that the lift can coast down the last little bit and not press against the hard stops
-    double liftBottomTarget = 10;
-    double liftTopTarget = 100;
-
     if(Controller1.ButtonL1.pressing()) {
       liftState = 1;
       liftTarget = liftTopTarget;
-      runLiftPID = true;
+      runLiftPID = 1;
     }
     else if(Controller1.ButtonL2.pressing()) {
       liftState = 0;
       liftTarget = liftBottomTarget;
 
     }
+
+
+    
+    error = liftTarget - LiftMotor.rotation(rotationUnits::deg);
+
+    if(runLiftPID && fabs(error) > maxError) {
+     
+      //Brain.Screen.print(error);
+
+      if(fabs(error) < integralBound) {
+        integral += error;
+      }
+      else {
+        integral = 0;
+      }
+      //reset integral if we pass the target
+      if(error * previousError < 0) {
+        integral = 0;
+      }
+
+      derivative = error - previousError;
+
+      previousError = error;
+
+      power = kP * error + kI * integral + kD * derivative;
+
+      LiftMotor.spin(directionType::fwd, power, voltageUnits::volt);
+
+    }
+
+    // Brain.Screen.setCursor(2, 1);
+    // Brain.Screen.print(runLiftPID);
 
 
     /* INTAKES */
@@ -131,6 +192,11 @@ void usercontrol(void) {
         RightIntake.spin(directionType::rev, 100, velocityUnits::pct);
         TopRoller.spin(directionType::rev, 100, velocityUnits::pct);
       }
+      else{
+        LeftIntake.stop(brakeType::brake);
+        RightIntake.stop(brakeType::brake);
+        TopRoller.stop(brakeType::brake);
+      }
 
     }
     //If the tray is UP, only intake with the side rollers and only outtake with the top roller
@@ -143,11 +209,17 @@ void usercontrol(void) {
       else if(Controller1.ButtonR2.pressing()) {
         TopRoller.spin(directionType::rev, 100, velocityUnits::pct);
       }
+      else{
+        LeftIntake.stop(brakeType::brake);
+        RightIntake.stop(brakeType::brake);
+        TopRoller.stop(brakeType::brake);
+      }
+
 
     }
     
 
-    wait(20, msec); // Sleep the task for a short amount of time to
+    task::sleep(20); // Sleep the task for a short amount of time to
                     // prevent wasted resources.
   }
 }
