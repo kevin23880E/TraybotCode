@@ -83,8 +83,6 @@ void usercontrol(void) {
   
   //create a task to control the lift with a PID function
 
-
-
   double error = 0;
   double previousError = 0;
 
@@ -96,7 +94,6 @@ void usercontrol(void) {
   double integralBound = 10;
 
   double derivative = 0;
-
 
   double kP = 0.7;
   double kI = 0.0;
@@ -114,8 +111,9 @@ void usercontrol(void) {
 
   double liftTarget = 0.0;
 
-  double liftBottomTarget = 30;
-  double liftTopTarget = 400;
+  //how many degrees the motor should spin to the get the lift to the top/bottom of its path
+  double liftBottomTarget = 5;
+  double liftTopTarget = 500;
 
   while (1) {
 
@@ -125,10 +123,10 @@ void usercontrol(void) {
     turnAmt = Controller1.Axis1.value();
     strafeAmt = Controller1.Axis4.value();
 
-    LFDrive.spin(directionType::fwd, driveAmt - turnAmt + strafeAmt, velocityUnits::pct);
-    RFDrive.spin(directionType::fwd, driveAmt + turnAmt - strafeAmt, velocityUnits::pct);
-    LBDrive.spin(directionType::fwd, driveAmt - turnAmt - strafeAmt, velocityUnits::pct);
-    RBDrive.spin(directionType::fwd, driveAmt + turnAmt + strafeAmt, velocityUnits::pct);
+    LFDrive.spin(directionType::fwd, driveAmt + turnAmt + strafeAmt, velocityUnits::pct);
+    RFDrive.spin(directionType::fwd, driveAmt - turnAmt - strafeAmt, velocityUnits::pct);
+    LBDrive.spin(directionType::fwd, driveAmt + turnAmt - strafeAmt, velocityUnits::pct);
+    RBDrive.spin(directionType::fwd, driveAmt - turnAmt + strafeAmt, velocityUnits::pct);
 
 
     /* LIFT */
@@ -145,6 +143,8 @@ void usercontrol(void) {
     }
 
 
+
+    //LIFT PID CONTROLLER
     
     error = liftTarget - LiftMotor.rotation(rotationUnits::deg);
 
@@ -169,7 +169,14 @@ void usercontrol(void) {
 
       power = kP * error + kI * integral + kD * derivative;
 
-      LiftMotor.spin(directionType::fwd, power, voltageUnits::volt);
+      //let the lift coast to its bottom resting point
+      if(liftState == 0 && LiftMotor.rotation(rotationUnits::deg) < (liftBottomTarget + 10)) {
+        LiftMotor.stop(brakeType::coast);
+      }
+      else {
+        LiftMotor.spin(directionType::fwd, power, voltageUnits::volt);
+      }
+      
 
     }
 
